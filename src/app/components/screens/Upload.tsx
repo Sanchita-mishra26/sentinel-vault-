@@ -109,6 +109,16 @@ const handleDeleteShard = async () => {
   }
 };
 
+const handleDownload = () => {
+  if (!backendData?.fileId) {
+    alert("File ID is missing. Please upload a file first.");
+    return;
+  }
+
+  console.log("Downloading file with ID:", backendData.fileId);
+  window.open(`http://localhost:5000/api/download/${backendData.fileId}`);
+};
+
 
   const handleUploadAreaClick = () => {
     fileInputRef.current?.click();
@@ -332,14 +342,7 @@ const handleDeleteShard = async () => {
   )}
 
   <button
-  onClick={() => {
-    if (!backendData?.fileId) {
-      console.log("No fileId");
-      return;
-    }
-
-    window.open(`http://localhost:5000/api/download/${backendData.fileId}`);
-  }}
+  onClick={handleDownload}
   disabled={!backendData?.fileId}
   className="px-4 py-2 rounded-lg border border-green-500/40 bg-green-500/10 text-green-300 text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
 >

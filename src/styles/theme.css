@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', sans-serif;
+  --font-heading: 'Sora', sans-serif;
+  
+  --color-brand-bg: #0B1220;
+  --color-brand-card: #0F1E3D;
+  --color-brand-border: #1F3B73;
+  --color-brand-primary: #3EA6FF;
+  --color-brand-secondary: #6BD3FF;
+  --color-brand-accent: #22E1FF;
+}
+
+@layer base {
+  body {
+    @apply bg-brand-bg text-slate-200 font-sans antialiased selection:bg-brand-primary/30;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading text-white tracking-tight;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-brand-card/60 backdrop-blur-xl border border-brand-border/50 shadow-lg;
+  }
+  .neon-text-primary {
+    @apply text-brand-primary drop-shadow-[0_0_8px_rgba(62,166,255,0.6)];
+  }
+  .neon-text-accent {
+    @apply text-brand-accent drop-shadow-[0_0_8px_rgba(34,225,255,0.6)];
+  }
+  .neon-border {
+    @apply border-brand-primary/50 shadow-[0_0_15px_rgba(62,166,255,0.2)];
+  }
+  .neon-border-critical {
+    @apply border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)];
+  }
+}

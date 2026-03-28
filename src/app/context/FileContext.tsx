@@ -9,7 +9,7 @@ export interface FileMetadata {
 }
 
 export interface ComplianceReport {
-  status: 'pending' | 'scanning' | 'completed';
+  status: 'pending' | 'scanning' | 'completed' | 'high-risk' | 'low-risk';
   piiCategories?: number;
   entities?: {
     fullNames: number;

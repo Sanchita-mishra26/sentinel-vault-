@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { ShieldCheck, FileText, AlertTriangle, ScanLine, CheckCircle2, Building, User, Calendar, CreditCard } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
+import { useFile } from '../../context/FileContext';
 
 export function Compliance() {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
+  const { fileState, setComplianceReport } = useFile();
 
   useEffect(() => {
     const sequence = async () => {
@@ -16,11 +18,68 @@ export function Compliance() {
     sequence();
   }, []);
 
+  useEffect(() => {
+    setComplianceReport({
+      status: 'pending',
+      piiCategories: 0,
+      entities: { fullNames: 0, datesOfBirth: 0, identificationNums: 0 },
+    });
+  }, [setComplianceReport]);
+
+  useEffect(() => {
+    if (step === 0) return;
+
+    if (step === 1) {
+      setComplianceReport({
+        status: 'scanning',
+        piiCategories: 0,
+        entities: { fullNames: 0, datesOfBirth: 0, identificationNums: 0 },
+      });
+      return;
+    }
+
+    if (step === 2) {
+      setComplianceReport({
+        status: 'scanning',
+        piiCategories: 3,
+        entities: { fullNames: 2, datesOfBirth: 1, identificationNums: 2 },
+        detectedContent: 'PII markers detected during NLP scan',
+      });
+      return;
+    }
+
+    setComplianceReport({
+      status: 'completed',
+      piiCategories: 3,
+      entities: { fullNames: 2, datesOfBirth: 1, identificationNums: 2 },
+      detectedContent: 'File flagged for enhanced encryption and sharding',
+    });
+  }, [step, setComplianceReport]);
+
   return (
     <div className="flex flex-col h-full gap-8 p-8 max-w-6xl mx-auto">
       <div className="flex items-center gap-4">
         <ScanLine className="w-8 h-8 text-brand-accent animate-pulse" />
         <h1 className="text-3xl font-heading font-bold text-white">AI PII Scanning & Compliance</h1>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="px-4 py-3 rounded-2xl bg-brand-bg border border-brand-border/50 flex items-center gap-3 flex-1">
+          <FileText className="w-5 h-5 text-brand-primary" />
+          {fileState.metadata ? (
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-white">{fileState.metadata.name}</span>
+              <span className="text-xs text-slate-400 font-mono">
+                Session {fileState.metadata.sessionId} • Uploaded {fileState.metadata.uploadTimestamp}
+              </span>
+            </div>
+          ) : (
+            <span className="text-sm text-slate-400">No file selected yet. Upload a file to view live compliance data.</span>
+          )}
+        </div>
+        <div className="px-3 py-2 rounded-xl bg-green-500/10 border border-green-500/30 text-xs text-green-300 font-semibold">
+          {fileState.complianceReport?.status === 'completed' ? 'Compliance ready' : 'Awaiting scan'}
+        </div>
       </div>
 
       <div className="flex-1 flex gap-8">

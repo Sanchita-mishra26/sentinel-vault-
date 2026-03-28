@@ -3,10 +3,12 @@ import { FileText, Lock, ArrowRight, Server, Activity, ArrowRightLeft, ShieldAle
 import { motion, AnimatePresence } from 'motion/react';
 import { Gauge } from '../Gauge';
 import { useNavigate } from 'react-router-dom';
+import { useFile } from '../../context/FileContext';
 
 export function EncryptionFlow() {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
+  const { fileState, setEncryptionStatus, setShardData } = useFile();
 
   useEffect(() => {
     const sequence = async () => {
@@ -17,11 +19,40 @@ export function EncryptionFlow() {
     sequence();
   }, []);
 
+  useEffect(() => {
+    if (step >= 1) {
+      setEncryptionStatus({
+        isEncrypted: true,
+        algorithm: 'AES-256',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    if (step >= 2) {
+      const shardCount = 4;
+      setShardData({
+        shards: Array.from({ length: shardCount }).map((_, idx) => ({
+          id: `shard-${idx + 1}`,
+          size: Math.max(1, Math.round((fileState.metadata?.size ?? 0) / shardCount)),
+          storedOn: idx + 1,
+          replication: 2,
+        })),
+        totalShards: shardCount,
+        distributionNodes: shardCount,
+      });
+    }
+  }, [fileState.metadata?.size, setEncryptionStatus, setShardData, step]);
+
   return (
     <div className="flex flex-col h-full gap-8 p-8 max-w-7xl mx-auto">
       <div className="flex items-center gap-4 border-b border-brand-border/40 pb-6">
         <Lock className="w-8 h-8 text-brand-primary" />
-        <h1 className="text-3xl font-heading font-bold text-white">Encryption & Distributed Sharding</h1>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-heading font-bold text-white">Encryption & Distributed Sharding</h1>
+          <span className="text-sm text-slate-400 font-mono">
+            {fileState.metadata ? `Processing ${fileState.metadata.name}` : 'No file selected'}
+          </span>
+        </div>
       </div>
 
       <div className="flex-1 flex gap-8">

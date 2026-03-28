@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useFile } from '../../context/FileContext';
 
 export function Upload() {
-  const { fileState, setFile, setFileId, setMetadata, setBackendData, resetFileState } = useFile();
+  const { fileState, updateFileState, setBackendData, resetFileState } = useFile();
 
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -148,13 +148,15 @@ export function Upload() {
     const newSessionId = `SV-${Math.floor(1000 + Math.random() * 9000)}`;
 
     // Update context with file and metadata
-    setFile(file);
-    setMetadata({
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      uploadTimestamp: timestamp,
-      sessionId: newSessionId,
+    updateFileState({
+      file,
+      metadata: {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        uploadTimestamp: timestamp,
+        sessionId: newSessionId,
+      },
     });
 
     // Update local UI state

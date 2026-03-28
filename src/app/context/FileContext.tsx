@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, useState, ReactNode } from 'react';
 
 export interface FileMetadata {
   name: string;
@@ -53,6 +53,7 @@ export interface FileState {
 
 interface FileContextType {
   fileState: FileState;
+  updateFileState: (updates: Partial<FileState>) => void;
   setFile: (file: File | null) => void;
   setFileId: (fileId: string | null) => void;
   setMetadata: (metadata: FileMetadata | null) => void;
@@ -78,55 +79,63 @@ const FileContext = createContext<FileContextType | undefined>(undefined);
 export function FileProvider({ children }: { children: ReactNode }) {
   const [fileState, setFileStateInternal] = useState<FileState>(initialFileState);
 
+  const updateFileState = (updates: Partial<FileState>) => {
+    setFileStateInternal(prev => ({ ...prev, ...updates }));
+  };
+
   const setFile = (file: File | null) => {
-    setFileStateInternal(prev => ({ ...prev, file }));
+    updateFileState({ file });
   };
 
   const setFileId = (fileId: string | null) => {
-    setFileStateInternal(prev => ({ ...prev, fileId }));
+    updateFileState({ fileId });
   };
 
   const setMetadata = (metadata: FileMetadata | null) => {
-    setFileStateInternal(prev => ({ ...prev, metadata }));
+    updateFileState({ metadata });
   };
 
   const setComplianceReport = (report: ComplianceReport | null) => {
-    setFileStateInternal(prev => ({ ...prev, complianceReport: report }));
+    updateFileState({ complianceReport: report });
   };
 
   const setEncryptionStatus = (status: EncryptionStatus | null) => {
-    setFileStateInternal(prev => ({ ...prev, encryptionStatus: status }));
+    updateFileState({ encryptionStatus: status });
   };
 
   const setShardData = (data: ShardData | null) => {
-    setFileStateInternal(prev => ({ ...prev, shardData: data }));
+    updateFileState({ shardData: data });
   };
 
   const setBackendData = (data: any) => {
-    setFileStateInternal(prev => ({ ...prev, backendData: data }));
+    setFileStateInternal(prev => ({
+      ...prev,
+      backendData: data,
+      fileId: data?.fileId ?? prev.fileId,
+    }));
   };
 
   const resetFileState = () => {
     setFileStateInternal(initialFileState);
   };
 
-  return (
-    <FileContext.Provider
-      value={{
-        fileState,
-        setFile,
-        setFileId,
-        setMetadata,
-        setComplianceReport,
-        setEncryptionStatus,
-        setShardData,
-        setBackendData,
-        resetFileState,
-      }}
-    >
-      {children}
-    </FileContext.Provider>
+  const value = useMemo(
+    () => ({
+      fileState,
+      updateFileState,
+      setFile,
+      setFileId,
+      setMetadata,
+      setComplianceReport,
+      setEncryptionStatus,
+      setShardData,
+      setBackendData,
+      resetFileState,
+    }),
+    [fileState],
   );
+
+  return <FileContext.Provider value={value}>{children}</FileContext.Provider>;
 }
 
 export function useFile() {

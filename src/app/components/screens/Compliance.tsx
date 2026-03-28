@@ -1,13 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { ShieldCheck, FileText, AlertTriangle, ScanLine, CheckCircle2, Building, User, Calendar, CreditCard } from 'lucide-react';
+import { ShieldCheck, FileText, AlertTriangle, ScanLine, CheckCircle2, User, Calendar, CreditCard } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useFile } from '../../context/FileContext';
+
+const formatFileSizeMB = (size: number | null | undefined) => {
+  if (!size) return null;
+  return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+};
 
 export function Compliance() {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
   const { fileState, fileData, setComplianceReport, setSystemStatus } = useFile();
+  const complianceReport = fileData.complianceReport;
+  const complianceStatus = complianceReport?.status ?? 'pending';
+  const entityCounts = complianceReport?.entities ?? { fullNames: 0, datesOfBirth: 0, identificationNums: 0 };
+  const piiCategories = complianceReport?.piiCategories ?? 0;
 
   useEffect(() => {
     if (!fileState.file) {
@@ -76,11 +85,12 @@ export function Compliance() {
       <div className="flex items-center gap-3">
         <div className="px-4 py-3 rounded-2xl bg-brand-bg border border-brand-border/50 flex items-center gap-3 flex-1">
           <FileText className="w-5 h-5 text-brand-primary" />
-          {fileState.metadata ? (
+          {fileData.fileName ? (
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-white">{fileState.metadata.name}</span>
+              <span className="text-sm font-semibold text-white">{fileData.fileName}</span>
               <span className="text-xs text-slate-400 font-mono">
-                Session {fileState.metadata.sessionId} • Uploaded {fileState.metadata.uploadTimestamp}
+                {formatFileSizeMB(fileData.fileSize) ? `${formatFileSizeMB(fileData.fileSize)} • ` : ''}
+                {fileState.metadata ? `Session ${fileState.metadata.sessionId} • Uploaded ${fileState.metadata.uploadTimestamp}` : 'Metadata pending'}
               </span>
             </div>
           ) : (
@@ -88,7 +98,7 @@ export function Compliance() {
           )}
         </div>
         <div className="px-3 py-2 rounded-xl bg-green-500/10 border border-green-500/30 text-xs text-green-300 font-semibold">
-          {fileState.complianceReport?.status === 'completed' ? 'Compliance ready' : 'Awaiting scan'}
+          {complianceStatus === 'completed' ? 'Compliance ready' : complianceStatus === 'scanning' ? 'Scanning...' : 'Awaiting scan'}
         </div>
       </div>
 
@@ -138,7 +148,7 @@ export function Compliance() {
                    <div className="flex flex-col items-center text-center gap-3">
                      <AlertTriangle className="w-12 h-12 text-yellow-500 drop-shadow-[0_0_10px_rgba(234,179,8,0.5)] animate-pulse" />
                      <h3 className="text-xl font-heading font-bold text-yellow-500">Sensitive Data Found</h3>
-                     <p className="text-sm text-slate-300">High concentration of PII detected in document.</p>
+                     <p className="text-sm text-slate-300">{complianceReport?.detectedContent ?? 'High concentration of PII detected in document.'}</p>
                    </div>
                 </motion.div>
               )}
@@ -155,14 +165,18 @@ export function Compliance() {
                <div className="flex flex-col gap-2">
                  <span className="text-xs font-semibold text-slate-400 uppercase">Detection Status</span>
                  <div className="flex items-center gap-3 bg-brand-bg/50 p-3 rounded-lg border border-brand-border/30">
-                    {step === 0 && <span className="text-slate-500 text-sm italic">Waiting...</span>}
-                    {step === 1 && <span className="text-brand-primary text-sm font-semibold animate-pulse">Scanning Document...</span>}
-                    {step >= 2 && <span className="text-yellow-500 text-sm font-bold flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> 4 PII Categories Found</span>}
+                    {complianceStatus === 'pending' && <span className="text-slate-500 text-sm italic">Waiting...</span>}
+                    {complianceStatus === 'scanning' && <span className="text-brand-primary text-sm font-semibold animate-pulse">Scanning Document...</span>}
+                    {complianceStatus === 'completed' && (
+                      <span className="text-yellow-500 text-sm font-bold flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4" /> {piiCategories} PII Categories Found
+                      </span>
+                    )}
                  </div>
                </div>
 
                <AnimatePresence>
-                 {step >= 2 && (
+                 {complianceStatus !== 'pending' && (
                    <motion.div 
                      key="identified-entities"
                      initial={{ opacity: 0, height: 0 }}
@@ -172,9 +186,9 @@ export function Compliance() {
                    >
                      <span className="text-xs font-semibold text-slate-400 uppercase">Identified Entities</span>
                      {[
-                       { icon: User, label: 'Full Names', count: 2 },
-                       { icon: Calendar, label: 'Dates of Birth', count: 1 },
-                       { icon: CreditCard, label: 'Identification Nums', count: 2 },
+                       { icon: User, label: 'Full Names', count: entityCounts.fullNames },
+                       { icon: Calendar, label: 'Dates of Birth', count: entityCounts.datesOfBirth },
+                       { icon: CreditCard, label: 'Identification Nums', count: entityCounts.identificationNums },
                      ].map((entity, i) => (
                        <motion.div 
                          initial={{ opacity: 0, x: 20 }}
@@ -193,7 +207,7 @@ export function Compliance() {
                    </motion.div>
                  )}
 
-                 {step >= 3 && (
+                 {complianceStatus === 'completed' && (
                    <motion.div 
                      key="required-action"
                      initial={{ opacity: 0, y: 20 }}
@@ -218,9 +232,9 @@ export function Compliance() {
 
           <div className="flex justify-between items-center bg-brand-card/50 p-4 rounded-xl border border-brand-border/40">
             {[
-              { label: 'GDPR Ready', active: step >= 2 },
-              { label: 'HIPAA Aligned', active: step >= 2 },
-              { label: 'Zero-Knowledge', active: step >= 3 }
+              { label: 'GDPR Ready', active: complianceStatus !== 'pending' },
+              { label: 'HIPAA Aligned', active: complianceStatus !== 'pending' },
+              { label: 'Zero-Knowledge', active: complianceStatus === 'completed' }
             ].map((tag, i) => (
               <div key={i} className={`flex flex-col items-center gap-1 transition-opacity duration-500 ${tag.active ? 'opacity-100' : 'opacity-40'}`}>
                 <CheckCircle2 className={`w-5 h-5 ${tag.active ? 'text-green-400' : 'text-slate-600'}`} />

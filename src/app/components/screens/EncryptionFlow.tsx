@@ -1,14 +1,28 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Lock, ArrowRight, Server, Activity, ArrowRightLeft, ShieldAlert } from 'lucide-react';
+import { FileText, Lock, ArrowRight, Server, Activity, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Gauge } from '../Gauge';
 import { useNavigate } from 'react-router-dom';
 import { useFile } from '../../context/FileContext';
 
+const formatFileSizeMB = (size: number | null | undefined) => {
+  if (!size) return null;
+  return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+};
+
 export function EncryptionFlow() {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
   const { fileState, fileData, setEncryptionStatus, setShardData, setSystemStatus } = useFile();
+  const effectiveFileSize = fileData.fileSize ?? fileState.metadata?.size ?? 0;
+  const shardList = fileData.shards ?? [];
+  const shardDisplay = shardList.length
+    ? shardList
+    : Array.from({ length: 4 }).map((_, idx) => ({
+        id: `shard-${idx + 1}`,
+        size: Math.max(1, Math.round((effectiveFileSize || 1) / 4)),
+      }));
+  const nodeCount = fileState.shardData?.distributionNodes ?? shardDisplay.length;
 
   useEffect(() => {
     if (!fileState.file) {
@@ -36,11 +50,11 @@ export function EncryptionFlow() {
     }
 
     if (step >= 2) {
-      const shardCount = 4;
+      const shardCount = shardDisplay.length || 4;
       setShardData({
         shards: Array.from({ length: shardCount }).map((_, idx) => ({
           id: `shard-${idx + 1}`,
-          size: Math.max(1, Math.round((fileState.metadata?.size ?? 0) / shardCount)),
+          size: Math.max(1, Math.round((effectiveFileSize || 1) / shardCount)),
           storedOn: idx + 1,
           replication: 2,
         })),
@@ -55,7 +69,7 @@ export function EncryptionFlow() {
       const timer = setTimeout(() => navigate('/app/attack'), 1500);
       return () => clearTimeout(timer);
     }
-  }, [fileState.metadata?.size, navigate, setEncryptionStatus, setShardData, setSystemStatus, step]);
+  }, [effectiveFileSize, navigate, setEncryptionStatus, setShardData, setSystemStatus, shardDisplay.length, step]);
 
   return (
     <div className="flex flex-col h-full gap-8 p-8 max-w-7xl mx-auto">
@@ -64,7 +78,9 @@ export function EncryptionFlow() {
         <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-heading font-bold text-white">Encryption & Distributed Sharding</h1>
           <span className="text-sm text-slate-400 font-mono">
-            {fileData.fileName ? `Processing ${fileData.fileName}` : 'No file selected'}
+            {fileData.fileName
+              ? `Processing ${fileData.fileName}${formatFileSizeMB(fileData.fileSize) ? ` • ${formatFileSizeMB(fileData.fileSize)}` : ''}`
+              : 'No file selected'}
           </span>
         </div>
       </div>
@@ -95,7 +111,9 @@ export function EncryptionFlow() {
             </motion.div>
             <div className="text-center h-12">
               <h3 className="font-heading font-semibold text-white">{step > 0 ? 'Encrypted File' : 'Raw File'}</h3>
-              <p className="text-xs text-slate-400 mt-1">AES-256 Validated</p>
+              <p className="text-xs text-slate-400 mt-1">
+                {fileData.encryptionStatus?.algorithm ? `${fileData.encryptionStatus.algorithm} Validated` : 'Encryption Pending'}
+              </p>
             </div>
             
             {/* Flow Arrow */}
@@ -113,22 +131,25 @@ export function EncryptionFlow() {
           {/* Step 2: Sharding */}
           <div className="flex flex-col items-center gap-6 z-10 relative w-64 h-full justify-center">
             <div className="grid grid-cols-2 gap-4">
-              {[0, 1, 2, 3].map((shard) => (
+              {shardDisplay.map((shard, idx) => (
                 <motion.div 
-                   key={shard}
+                   key={shard.id ?? idx}
                    initial={{ opacity: 0, scale: 0, rotate: -45 }}
                    animate={step >= 2 ? { opacity: 1, scale: 1, rotate: 0 } : {}}
-                   transition={{ delay: shard * 0.2, type: 'spring' }}
+                   transition={{ delay: idx * 0.2, type: 'spring' }}
                    className="w-16 h-20 rounded-xl bg-brand-bg/80 border border-brand-primary/40 flex items-center justify-center flex-col gap-2 relative shadow-[0_0_15px_rgba(62,166,255,0.15)]"
                 >
                   <FileText className="w-6 h-6 text-brand-primary opacity-50" />
-                  <span className="text-[10px] font-bold text-slate-300">Shard {String.fromCharCode(65 + shard)}</span>
+                  <span className="text-[10px] font-bold text-slate-300">{shard.id ?? `Shard ${String.fromCharCode(65 + idx)}`}</span>
+                  <span className="text-[10px] text-slate-500">
+                    {formatFileSizeMB(shard.size) ?? `${shard.size} bytes`}
+                  </span>
                   {/* Flow to nodes */}
                   {step >= 3 && (
                     <motion.div 
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: 80 }}
-                      transition={{ delay: 0.5 + (shard * 0.1) }}
+                      transition={{ delay: 0.5 + (idx * 0.1) }}
                       className="absolute top-1/2 -right-[90px] h-[2px] bg-brand-primary/40 origin-left"
                     >
                       <div className="w-2 h-2 rounded-full bg-brand-primary absolute right-0 top-1/2 -translate-y-1/2 shadow-[0_0_5px_rgba(62,166,255,0.8)]" />
@@ -146,12 +167,12 @@ export function EncryptionFlow() {
           {/* Step 3: Distributed Storage */}
           <div className="flex flex-col items-center gap-6 z-10 relative w-64 h-full justify-center">
             <div className="flex flex-col gap-4 w-full pl-16">
-              {[0, 1, 2, 3].map((node) => (
+              {Array.from({ length: Math.max(nodeCount, 1) }).map((_, node) => (
                 <motion.div 
                    key={node}
                    initial={{ opacity: 0, x: 20 }}
                    animate={step >= 3 ? { opacity: 1, x: 0 } : {}}
-                   transition={{ delay: 0.5 + (node * 0.2) }}
+                    transition={{ delay: 0.5 + (node * 0.2) }}
                    className="flex items-center gap-4 bg-brand-card/50 border border-brand-border/40 p-3 rounded-xl hover:border-brand-primary/30 transition-colors"
                 >
                   <div className="w-10 h-10 rounded-lg bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center shadow-[0_0_10px_rgba(62,166,255,0.2)]">

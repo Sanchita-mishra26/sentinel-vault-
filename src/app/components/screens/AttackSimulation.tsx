@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { NetworkMap } from '../NetworkMap';
 import { Gauge } from '../Gauge';
 import { motion, AnimatePresence } from 'motion/react';
@@ -14,10 +14,30 @@ const attackNodes = [
   { id: '5', label: 'Node 5', state: 'active', health: 99, x: 15, y: 75 },
 ] as any;
 
+const formatFileSizeMB = (size: number | null | undefined) => {
+  if (!size) return null;
+  return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+};
+
 export function AttackSimulation() {
   const [threatScore, setThreatScore] = useState(12);
   const navigate = useNavigate();
   const { fileState, fileData, setSystemStatus } = useFile();
+  const shardNodes = useMemo(() => {
+    if (fileData.shards?.length) {
+      return fileData.shards.map((shard, idx) => ({
+        id: shard.id ?? `shard-${idx + 1}`,
+        label: shard.id ?? `Shard ${idx + 1}`,
+        state: idx === 2 ? 'critical' : idx === 0 ? 'warning' : 'active',
+        health: Math.max(40, 100 - idx * 5),
+      }));
+    }
+    return attackNodes;
+  }, [fileData.shards]);
+  const trackedShardCount = fileData.shards?.length ?? shardNodes.length ?? 0;
+  const fileLabel = fileData.fileName
+    ? `${fileData.fileName}${formatFileSizeMB(fileData.fileSize) ? ` • ${formatFileSizeMB(fileData.fileSize)}` : ''}`
+    : 'current file';
 
   useEffect(() => {
     if (!fileState.file) {
@@ -54,20 +74,22 @@ export function AttackSimulation() {
         </div>
         <div className="flex-1">
           <h2 className="text-red-500 font-heading font-bold text-lg">AI ALERT: Anomaly detected on Node 3</h2>
-          <p className="text-red-300/80 text-sm font-mono">Signature: X-Zero-Day variant. Unauthorized access attempt.</p>
+          <p className="text-red-300/80 text-sm font-mono">
+            Signature: X-Zero-Day variant. Unauthorized access attempt on {fileLabel}.
+          </p>
         </div>
         <button onClick={() => navigate('/app/isolation')} className="px-6 py-2 rounded-lg bg-red-500 text-white font-bold text-sm hover:bg-red-600 transition-colors shadow-[0_0_15px_rgba(239,68,68,0.5)] flex items-center gap-2">
           ACTIVATE ISOLATION <ArrowRight className="w-4 h-4" />
         </button>
       </motion.div>
 
-      <div className="flex-1 flex gap-6">
+         <div className="flex-1 flex gap-6">
         {/* Left Side: Network View */}
         <div className="flex-grow glass-card rounded-2xl p-6 flex flex-col relative border-red-500/30">
           <div className="flex justify-between items-center mb-6 z-10">
              <h2 className="text-xl font-heading font-semibold text-white">Live Threat Topography</h2>
              <span className="text-[11px] px-3 py-1 rounded-full border border-red-500/30 bg-red-500/10 text-red-200">
-               Shards tracked: {fileData.shards ? fileData.shards.length : 0}
+               Shards tracked: {trackedShardCount}
              </span>
              <span className="text-xs px-2 py-1 bg-red-500/10 text-red-500 border border-red-500/30 rounded-full font-semibold flex items-center gap-2 animate-pulse">
                <span className="w-2 h-2 rounded-full bg-red-500" />
@@ -77,7 +99,7 @@ export function AttackSimulation() {
           
           <div className="flex-1 border border-brand-border/40 rounded-xl overflow-hidden bg-brand-bg/50 relative">
              <div className="absolute inset-0 bg-red-500/5 mix-blend-color-burn pointer-events-none z-0" />
-             <NetworkMap nodes={attackNodes} coreState="warning" />
+             <NetworkMap nodes={shardNodes} coreState="warning" />
           </div>
         </div>
 

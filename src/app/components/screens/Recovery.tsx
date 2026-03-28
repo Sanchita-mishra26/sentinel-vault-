@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NetworkMap } from '../NetworkMap';
 import { ShieldCheck, CheckCircle2, Home } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Gauge } from '../Gauge';
 import { useNavigate } from 'react-router-dom';
+import { useFile } from '../../context/FileContext';
 
 const recoveredNodes = [
   { id: '1', label: 'Node 1', state: 'active', health: 100, x: 20, y: 30 },
@@ -15,6 +16,15 @@ const recoveredNodes = [
 
 export function Recovery() {
   const navigate = useNavigate();
+  const { fileState, setSystemStatus } = useFile();
+
+  useEffect(() => {
+    if (!fileState.file) {
+      navigate('/app/upload');
+      return;
+    }
+    setSystemStatus('recovered');
+  }, [fileState.file, navigate, setSystemStatus]);
 
   return (
     <div className="flex flex-col h-full gap-6">

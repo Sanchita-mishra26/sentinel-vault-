@@ -3,6 +3,7 @@ import { NetworkMap } from '../NetworkMap';
 import { motion } from 'motion/react';
 import { Zap, Activity, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useFile } from '../../context/FileContext';
 
 const reconstructionNodes = [
   { id: '1', label: 'Node 1', state: 'active', health: 100, x: 20, y: 30 },
@@ -15,8 +16,14 @@ const reconstructionNodes = [
 export function Reconstruction() {
   const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
+  const { fileState, setSystemStatus } = useFile();
 
   useEffect(() => {
+    if (!fileState.file) {
+      navigate('/app/upload');
+      return;
+    }
+    setSystemStatus('reconstruction');
     const interval = setInterval(() => {
       setProgress(p => {
         if (p >= 100) {
@@ -28,7 +35,7 @@ export function Reconstruction() {
       });
     }, 200);
     return () => clearInterval(interval);
-  }, [navigate]);
+  }, [fileState.file, navigate, setSystemStatus]);
 
   return (
     <div className="flex flex-col h-full gap-6 max-w-6xl mx-auto p-8">

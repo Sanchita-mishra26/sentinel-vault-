@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useFile } from '../../context/FileContext';
 
 export function Upload() {
-  const { fileState, setFile, setFileId, setMetadata, setBackendData, resetFileState } = useFile();
+  const { fileState, updateFileState, setBackendData, resetFileState, setSystemStatus } = useFile();
 
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -52,6 +52,7 @@ export function Upload() {
 
     setIsUploading(true);
     setProgress(0);
+    setSystemStatus('uploading');
 
     let current = 0;
     uploadIntervalRef.current = setInterval(() => {
@@ -78,6 +79,7 @@ export function Upload() {
       console.log("Backend response:", data);
 
       setBackendData(data);
+      setSystemStatus('uploaded');
 
     } catch (err) {
       console.error("Upload error:", err);
@@ -148,14 +150,19 @@ export function Upload() {
     const newSessionId = `SV-${Math.floor(1000 + Math.random() * 9000)}`;
 
     // Update context with file and metadata
-    setFile(file);
-    setMetadata({
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      uploadTimestamp: timestamp,
-      sessionId: newSessionId,
+    updateFileState({
+      file,
+      metadata: {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        uploadTimestamp: timestamp,
+        sessionId: newSessionId,
+      },
+      fileName: file.name,
+      fileSize: file.size,
     });
+    setSystemStatus('selected');
 
     // Update local UI state
     setUploadTimestamp(timestamp);

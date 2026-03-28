@@ -1,10 +1,12 @@
 import React from 'react';
-import { Bell, User, Activity, CheckCircle, ShieldAlert } from 'lucide-react';
+import { Bell, User, Activity, CheckCircle, ShieldAlert, FileText } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { useFile } from '../context/FileContext';
 
 export function TopBar() {
   const location = useLocation();
   const isAttack = location.pathname.includes('attack') || location.pathname.includes('isolation');
+  const { fileState } = useFile();
   
   return (
     <header className="h-16 w-full glass-card fixed top-0 left-64 border-b border-brand-border/40 z-10 flex items-center justify-between px-8" style={{ width: 'calc(100% - 16rem)' }}>
@@ -23,6 +25,13 @@ export function TopBar() {
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
           <CheckCircle className="w-4 h-4 text-green-400" />
           <span className="text-xs font-semibold text-slate-300">Nodes Online: {isAttack ? '4/5' : '5/5'}</span>
+        </div>
+        
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-bg/60 border border-brand-border/60">
+          <FileText className="w-4 h-4 text-slate-200" />
+          <span className="text-xs font-semibold text-slate-200">
+            {fileState.metadata ? `${fileState.metadata.name} · ${fileState.metadata.sessionId}` : 'No active file'}
+          </span>
         </div>
       </div>
 

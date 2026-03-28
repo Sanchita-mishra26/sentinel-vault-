@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ShieldCheck, FileText, AlertTriangle, ScanLine, CheckCircle2, User, Calendar, CreditCard } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
@@ -9,14 +9,52 @@ const formatFileSizeMB = (size: number | null | undefined) => {
   return `${(size / (1024 * 1024)).toFixed(2)} MB`;
 };
 
+const getRandomInRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+
 export function Compliance() {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
   const { fileState, fileData, setComplianceReport, setSystemStatus } = useFile();
   const complianceReport = fileData.complianceReport;
-  const complianceStatus = complianceReport?.status ?? 'pending';
+  const riskStatus = complianceReport?.status ?? 'pending';
   const entityCounts = complianceReport?.entities ?? { fullNames: 0, datesOfBirth: 0, identificationNums: 0 };
   const piiCategories = complianceReport?.piiCategories ?? 0;
+  const scanStatus = step === 0 ? 'pending' : step < 3 ? 'scanning' : 'completed';
+
+  const dynamicReport = useMemo(() => {
+    const size = fileData.fileSize ?? fileData.file?.size ?? 0;
+    const fileType = fileData.file?.type?.toLowerCase() ?? '';
+    const fileName = (fileData.fileName ?? fileData.file?.name ?? '').toLowerCase();
+    const isTextBased = fileType.includes('text') || fileName.endsWith('.txt');
+    const isLargeFile = size > 1024 * 1024;
+
+    let findings = getRandomInRange(isLargeFile ? 5 : 1, isLargeFile ? 8 : 3);
+    if (isTextBased) {
+      findings += 2;
+    }
+
+    const piiCategoriesCount = Math.max(1, Math.min(findings, 6));
+    const fullNames = Math.max(1, Math.floor(findings / 2));
+    const datesOfBirth = Math.max(0, Math.floor(findings / 4));
+    const identificationNums = Math.max(1, Math.max(findings - fullNames - datesOfBirth, 1));
+
+    const detectedContentParts = [
+      isLargeFile ? 'File exceeds 1MB and flagged for deeper review' : 'Lightweight file assessed with minimal risk indicators',
+    ];
+
+    if (isTextBased) {
+      detectedContentParts.push('Possible sensitive text detected');
+    }
+
+    detectedContentParts.push(`${findings} findings surfaced during scan`);
+
+    return {
+      status: isLargeFile ? 'high-risk' : 'low-risk',
+      piiCategories: piiCategoriesCount,
+      entities: { fullNames, datesOfBirth, identificationNums },
+      detectedContent: `${detectedContentParts.join('. ')}.`,
+    };
+  }, [fileData.file, fileData.fileName, fileData.fileSize]);
 
   useEffect(() => {
     if (!fileState.file) {
@@ -43,37 +81,30 @@ export function Compliance() {
   }, [setComplianceReport, setSystemStatus]);
 
   useEffect(() => {
-    if (step === 0) return;
-
-    if (step === 1) {
+    if (scanStatus === 'pending') {
       setComplianceReport({
-        status: 'scanning',
+        status: 'pending',
         piiCategories: 0,
         entities: { fullNames: 0, datesOfBirth: 0, identificationNums: 0 },
       });
       return;
     }
 
-    if (step === 2) {
+    if (scanStatus === 'scanning') {
       setComplianceReport({
         status: 'scanning',
-        piiCategories: 3,
-        entities: { fullNames: 2, datesOfBirth: 1, identificationNums: 2 },
-        detectedContent: 'PII markers detected during NLP scan',
+        piiCategories: dynamicReport.piiCategories,
+        entities: dynamicReport.entities,
+        detectedContent: dynamicReport.detectedContent,
       });
       return;
     }
 
-    setComplianceReport({
-      status: 'completed',
-      piiCategories: 3,
-      entities: { fullNames: 2, datesOfBirth: 1, identificationNums: 2 },
-      detectedContent: 'File flagged for enhanced encryption and sharding',
-    });
+    setComplianceReport(dynamicReport);
     setSystemStatus('compliance-complete');
     const timer = setTimeout(() => navigate('/app/encryption'), 1200);
     return () => clearTimeout(timer);
-  }, [navigate, setComplianceReport, setSystemStatus, step]);
+  }, [dynamicReport, navigate, scanStatus, setComplianceReport, setSystemStatus]);
 
   return (
     <div className="flex flex-col h-full gap-8 p-8 max-w-6xl mx-auto">
@@ -98,7 +129,7 @@ export function Compliance() {
           )}
         </div>
         <div className="px-3 py-2 rounded-xl bg-green-500/10 border border-green-500/30 text-xs text-green-300 font-semibold">
-          {complianceStatus === 'completed' ? 'Compliance ready' : complianceStatus === 'scanning' ? 'Scanning...' : 'Awaiting scan'}
+          {scanStatus === 'completed' ? 'Compliance ready' : scanStatus === 'scanning' ? 'Scanning...' : 'Awaiting scan'}
         </div>
       </div>
 
@@ -165,18 +196,18 @@ export function Compliance() {
                <div className="flex flex-col gap-2">
                  <span className="text-xs font-semibold text-slate-400 uppercase">Detection Status</span>
                  <div className="flex items-center gap-3 bg-brand-bg/50 p-3 rounded-lg border border-brand-border/30">
-                    {complianceStatus === 'pending' && <span className="text-slate-500 text-sm italic">Waiting...</span>}
-                    {complianceStatus === 'scanning' && <span className="text-brand-primary text-sm font-semibold animate-pulse">Scanning Document...</span>}
-                    {complianceStatus === 'completed' && (
+                    {scanStatus === 'pending' && <span className="text-slate-500 text-sm italic">Waiting...</span>}
+                    {scanStatus === 'scanning' && <span className="text-brand-primary text-sm font-semibold animate-pulse">Scanning Document...</span>}
+                    {scanStatus === 'completed' && (
                       <span className="text-yellow-500 text-sm font-bold flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4" /> {piiCategories} PII Categories Found
+                        <AlertTriangle className="w-4 h-4" /> {piiCategories} PII Categories Found ({riskStatus})
                       </span>
                     )}
                  </div>
                </div>
 
                <AnimatePresence>
-                 {complianceStatus !== 'pending' && (
+                 {scanStatus !== 'pending' && (
                    <motion.div 
                      key="identified-entities"
                      initial={{ opacity: 0, height: 0 }}
@@ -207,7 +238,7 @@ export function Compliance() {
                    </motion.div>
                  )}
 
-                 {complianceStatus === 'completed' && (
+                 {scanStatus === 'completed' && (
                    <motion.div 
                      key="required-action"
                      initial={{ opacity: 0, y: 20 }}
@@ -232,9 +263,9 @@ export function Compliance() {
 
           <div className="flex justify-between items-center bg-brand-card/50 p-4 rounded-xl border border-brand-border/40">
             {[
-              { label: 'GDPR Ready', active: complianceStatus !== 'pending' },
-              { label: 'HIPAA Aligned', active: complianceStatus !== 'pending' },
-              { label: 'Zero-Knowledge', active: complianceStatus === 'completed' }
+              { label: 'GDPR Ready', active: scanStatus !== 'pending' },
+              { label: 'HIPAA Aligned', active: scanStatus !== 'pending' },
+              { label: 'Zero-Knowledge', active: scanStatus === 'completed' }
             ].map((tag, i) => (
               <div key={i} className={`flex flex-col items-center gap-1 transition-opacity duration-500 ${tag.active ? 'opacity-100' : 'opacity-40'}`}>
                 <CheckCircle2 className={`w-5 h-5 ${tag.active ? 'text-green-400' : 'text-slate-600'}`} />

@@ -4,6 +4,7 @@ import { Gauge } from '../Gauge';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, Activity, AlertTriangle, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useFile } from '../../context/FileContext';
 
 const attackNodes = [
   { id: '1', label: 'Node 1', state: 'warning', health: 85, x: 20, y: 30 },
@@ -16,6 +17,15 @@ const attackNodes = [
 export function AttackSimulation() {
   const [threatScore, setThreatScore] = useState(12);
   const navigate = useNavigate();
+  const { fileState, fileData, setSystemStatus } = useFile();
+
+  useEffect(() => {
+    if (!fileState.file) {
+      navigate('/app/upload');
+      return;
+    }
+    setSystemStatus('attack-detected');
+  }, [fileState.file, navigate, setSystemStatus]);
 
   useEffect(() => {
     let currentScore = 12;
@@ -56,6 +66,9 @@ export function AttackSimulation() {
         <div className="flex-grow glass-card rounded-2xl p-6 flex flex-col relative border-red-500/30">
           <div className="flex justify-between items-center mb-6 z-10">
              <h2 className="text-xl font-heading font-semibold text-white">Live Threat Topography</h2>
+             <span className="text-[11px] px-3 py-1 rounded-full border border-red-500/30 bg-red-500/10 text-red-200">
+               Shards tracked: {fileData.shards ? fileData.shards.length : 0}
+             </span>
              <span className="text-xs px-2 py-1 bg-red-500/10 text-red-500 border border-red-500/30 rounded-full font-semibold flex items-center gap-2 animate-pulse">
                <span className="w-2 h-2 rounded-full bg-red-500" />
                ATTACK IN PROGRESS

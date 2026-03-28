@@ -39,6 +39,8 @@ export interface ShardData {
 export interface FileState {
   // Core file data
   file: File | null;
+  fileName: string | null;
+  fileSize: number | null;
   fileId: string | null;
   metadata: FileMetadata | null;
 
@@ -46,6 +48,8 @@ export interface FileState {
   complianceReport: ComplianceReport | null;
   encryptionStatus: EncryptionStatus | null;
   shardData: ShardData | null;
+  shards: ShardData['shards'] | null;
+  systemStatus: string | null;
 
   // Backend response
   backendData: any | null;
@@ -53,6 +57,15 @@ export interface FileState {
 
 interface FileContextType {
   fileState: FileState;
+  fileData: {
+    file: File | null;
+    fileName: string | null;
+    fileSize: number | null;
+    complianceReport: ComplianceReport | null;
+    encryptionStatus: EncryptionStatus | null;
+    shards: ShardData['shards'] | null;
+    systemStatus: string | null;
+  };
   updateFileState: (updates: Partial<FileState>) => void;
   setFile: (file: File | null) => void;
   setFileId: (fileId: string | null) => void;
@@ -60,17 +73,22 @@ interface FileContextType {
   setComplianceReport: (report: ComplianceReport | null) => void;
   setEncryptionStatus: (status: EncryptionStatus | null) => void;
   setShardData: (data: ShardData | null) => void;
+  setSystemStatus: (status: string | null) => void;
   setBackendData: (data: any) => void;
   resetFileState: () => void;
 }
 
 const initialFileState: FileState = {
   file: null,
+  fileName: null,
+  fileSize: null,
   fileId: null,
   metadata: null,
   complianceReport: null,
   encryptionStatus: null,
   shardData: null,
+  shards: null,
+  systemStatus: null,
   backendData: null,
 };
 
@@ -84,7 +102,7 @@ export function FileProvider({ children }: { children: ReactNode }) {
   };
 
   const setFile = (file: File | null) => {
-    updateFileState({ file });
+    updateFileState({ file, fileName: file?.name ?? null, fileSize: file?.size ?? null });
   };
 
   const setFileId = (fileId: string | null) => {
@@ -92,7 +110,11 @@ export function FileProvider({ children }: { children: ReactNode }) {
   };
 
   const setMetadata = (metadata: FileMetadata | null) => {
-    updateFileState({ metadata });
+    updateFileState({
+      metadata,
+      fileName: metadata?.name ?? null,
+      fileSize: metadata?.size ?? null,
+    });
   };
 
   const setComplianceReport = (report: ComplianceReport | null) => {
@@ -104,7 +126,11 @@ export function FileProvider({ children }: { children: ReactNode }) {
   };
 
   const setShardData = (data: ShardData | null) => {
-    updateFileState({ shardData: data });
+    updateFileState({ shardData: data, shards: data?.shards ?? null });
+  };
+
+  const setSystemStatus = (status: string | null) => {
+    updateFileState({ systemStatus: status });
   };
 
   const setBackendData = (data: any) => {
@@ -119,9 +145,23 @@ export function FileProvider({ children }: { children: ReactNode }) {
     setFileStateInternal(initialFileState);
   };
 
+  const fileData = useMemo(
+    () => ({
+      file: fileState.file,
+      fileName: fileState.fileName,
+      fileSize: fileState.fileSize,
+      complianceReport: fileState.complianceReport,
+      encryptionStatus: fileState.encryptionStatus,
+      shards: fileState.shards,
+      systemStatus: fileState.systemStatus,
+    }),
+    [fileState.complianceReport, fileState.encryptionStatus, fileState.file, fileState.fileName, fileState.fileSize, fileState.shards, fileState.systemStatus],
+  );
+
   const value = useMemo(
     () => ({
       fileState,
+      fileData,
       updateFileState,
       setFile,
       setFileId,
@@ -129,10 +169,11 @@ export function FileProvider({ children }: { children: ReactNode }) {
       setComplianceReport,
       setEncryptionStatus,
       setShardData,
+      setSystemStatus,
       setBackendData,
       resetFileState,
     }),
-    [fileState],
+    [fileData, fileState],
   );
 
   return <FileContext.Provider value={value}>{children}</FileContext.Provider>;

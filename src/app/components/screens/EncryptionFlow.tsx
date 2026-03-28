@@ -8,7 +8,13 @@ import { useFile } from '../../context/FileContext';
 export function EncryptionFlow() {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
-  const { fileState, setEncryptionStatus, setShardData } = useFile();
+  const { fileState, fileData, setEncryptionStatus, setShardData, setSystemStatus } = useFile();
+
+  useEffect(() => {
+    if (!fileState.file) {
+      navigate('/app/upload');
+    }
+  }, [fileState.file, navigate]);
 
   useEffect(() => {
     const sequence = async () => {
@@ -26,6 +32,7 @@ export function EncryptionFlow() {
         algorithm: 'AES-256',
         timestamp: new Date().toISOString(),
       });
+      setSystemStatus('encrypted');
     }
 
     if (step >= 2) {
@@ -40,8 +47,15 @@ export function EncryptionFlow() {
         totalShards: shardCount,
         distributionNodes: shardCount,
       });
+      setSystemStatus('sharded');
     }
-  }, [fileState.metadata?.size, setEncryptionStatus, setShardData, step]);
+
+    if (step >= 3) {
+      setSystemStatus('distributed');
+      const timer = setTimeout(() => navigate('/app/attack'), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [fileState.metadata?.size, navigate, setEncryptionStatus, setShardData, setSystemStatus, step]);
 
   return (
     <div className="flex flex-col h-full gap-8 p-8 max-w-7xl mx-auto">
@@ -50,7 +64,7 @@ export function EncryptionFlow() {
         <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-heading font-bold text-white">Encryption & Distributed Sharding</h1>
           <span className="text-sm text-slate-400 font-mono">
-            {fileState.metadata ? `Processing ${fileState.metadata.name}` : 'No file selected'}
+            {fileData.fileName ? `Processing ${fileData.fileName}` : 'No file selected'}
           </span>
         </div>
       </div>

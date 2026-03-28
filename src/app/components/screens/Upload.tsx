@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useFile } from '../../context/FileContext';
 
 export function Upload() {
-  const { fileState, updateFileState, setBackendData, resetFileState } = useFile();
+  const { fileState, updateFileState, setBackendData, resetFileState, setSystemStatus } = useFile();
 
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -52,6 +52,7 @@ export function Upload() {
 
     setIsUploading(true);
     setProgress(0);
+    setSystemStatus('uploading');
 
     let current = 0;
     uploadIntervalRef.current = setInterval(() => {
@@ -78,6 +79,7 @@ export function Upload() {
       console.log("Backend response:", data);
 
       setBackendData(data);
+      setSystemStatus('uploaded');
 
     } catch (err) {
       console.error("Upload error:", err);
@@ -157,7 +159,10 @@ export function Upload() {
         uploadTimestamp: timestamp,
         sessionId: newSessionId,
       },
+      fileName: file.name,
+      fileSize: file.size,
     });
+    setSystemStatus('selected');
 
     // Update local UI state
     setUploadTimestamp(timestamp);

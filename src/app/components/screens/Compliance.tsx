@@ -7,7 +7,13 @@ import { useFile } from '../../context/FileContext';
 export function Compliance() {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
-  const { fileState, setComplianceReport } = useFile();
+  const { fileState, fileData, setComplianceReport, setSystemStatus } = useFile();
+
+  useEffect(() => {
+    if (!fileState.file) {
+      navigate('/app/upload');
+    }
+  }, [fileState.file, navigate]);
 
   useEffect(() => {
     const sequence = async () => {
@@ -19,12 +25,13 @@ export function Compliance() {
   }, []);
 
   useEffect(() => {
+    setSystemStatus('compliance');
     setComplianceReport({
       status: 'pending',
       piiCategories: 0,
       entities: { fullNames: 0, datesOfBirth: 0, identificationNums: 0 },
     });
-  }, [setComplianceReport]);
+  }, [setComplianceReport, setSystemStatus]);
 
   useEffect(() => {
     if (step === 0) return;
@@ -54,7 +61,10 @@ export function Compliance() {
       entities: { fullNames: 2, datesOfBirth: 1, identificationNums: 2 },
       detectedContent: 'File flagged for enhanced encryption and sharding',
     });
-  }, [step, setComplianceReport]);
+    setSystemStatus('compliance-complete');
+    const timer = setTimeout(() => navigate('/app/encryption'), 1200);
+    return () => clearTimeout(timer);
+  }, [navigate, setComplianceReport, setSystemStatus, step]);
 
   return (
     <div className="flex flex-col h-full gap-8 p-8 max-w-6xl mx-auto">

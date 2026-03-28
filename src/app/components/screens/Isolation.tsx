@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { NetworkMap } from '../NetworkMap';
 import { ShieldAlert, AlertTriangle, PowerOff, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
+import { useFile } from '../../context/FileContext';
 
 const isolatedNodes = [
   { id: '1', label: 'Node 1', state: 'active', health: 100, x: 20, y: 30 },
@@ -15,12 +16,18 @@ const isolatedNodes = [
 export function Isolation() {
   const navigate = useNavigate();
   const [pulse, setPulse] = useState(true);
+  const { fileState, setSystemStatus } = useFile();
 
   useEffect(() => {
+    if (!fileState.file) {
+      navigate('/app/upload');
+      return;
+    }
+    setSystemStatus('isolation');
     const i = setInterval(() => setPulse(p => !p), 1000);
     const timeout = setTimeout(() => navigate('/app/reconstruction'), 5000);
     return () => { clearInterval(i); clearTimeout(timeout); };
-  }, [navigate]);
+  }, [fileState.file, navigate, setSystemStatus]);
 
   return (
     <div className="flex flex-col h-full items-center justify-center p-8">
